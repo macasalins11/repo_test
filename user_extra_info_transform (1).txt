@@ -1,0 +1,15 @@
+unnest col: location_change_city_ids keys: 'location_change_city_ids.list' pluck: false markLineage: false
+derive type: single value: ARRAYLEN({location_change_city_ids.list}) as: 'arraylen_location_change_city_ids.list'
+filter type: not col: {arraylen_location_change_city_ids.list} not: ISNULL({arraylen_location_change_city_ids.list}) action: Keep
+filter type: greaterThan col: {arraylen_location_change_city_ids.list} greaterThan: 1 action: Keep
+case condition: ifThenElse if: ISMISSING([vacancy_area_id]) then: 2 else: vacancy_area_id as: 'vacancy_fill_nulls&empty'
+case condition: ifThenElse if: {vacancy_fill_nulls&empty} < 2 then: 0 else: 1 as: 'vacancy_validation'
+case condition: ifThenElse if: employment_status == 0 then: 1 else: vacancy_validation as: 'vacancy_validation_employment'
+filter type: greaterThan col: vacancy_validation_employment greaterThan: 0 action: Keep
+replacepatterns col: years_experience with: '' on: ` ` global: true
+replacepatterns col: years_experience with: '\"' on: '\'' global: true
+unnest col: years_experience keys: 'months','years' pluck: false markLineage: true
+case condition: ifThenElse if: years_experience_months == 12 then: years_experience_years + 1 else: years_experience_years as: 'years'
+case condition: ifThenElse if: years_experience_months == 12 then: 0 else: years_experience_months as: 'months'
+join with: main_user_info_transform col: user_id_0 = current_dataset.user_id_0, user_id = main_user_info_transform.user_id, vacancy_area_id = current_dataset.vacancy_area_id, location_change_city_ids = current_dataset.location_change_city_ids, available_time_week_id = current_dataset.available_time_week_id, vacancy_area_custom = current_dataset.vacancy_area_custom, change_city = current_dataset.change_city, months = current_dataset.months, years = current_dataset.years, employment_status = current_dataset.employment_status, first_name = main_user_info_transform.first_name, last_name = main_user_info_transform.last_name, Phone = main_user_info_transform.Phone, load_date = main_user_info_transform.load_date row: current_dataset.user_id_0 == main_user_info_transform.user_id type: right
+replacemissing col: user_id_0, user_id, employment_status, years, months, change_city, vacancy_area_custom, available_time_week_id, location_change_city_ids, vacancy_area_id, last_name, load_date, Phone, first_name with: custom text: 'None'
